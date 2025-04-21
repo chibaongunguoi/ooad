@@ -23,7 +23,8 @@ public class HomeController : Controller
         return View();
     }
 
-    public IActionResult Privacy()
+   
+ public IActionResult Privacy()
     {
         if (HttpContext.Session.GetString("Username") == null)
         {

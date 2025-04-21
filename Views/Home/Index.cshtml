@@ -2,7 +2,185 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
+<div class="text-center mb-4">
     <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>
+
+<div class="text-center mb-4">
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#appointmentForm" aria-expanded="false" aria-controls="appointmentForm">
+        Add Appointment
+    </button>
+</div>
+
+<div class="collapse" id="appointmentForm">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Add New Appointment</h5>
+                    <form id="initialForm">
+                        <div class="form-group mb-3">
+                            <label for="appointmentDate">Date</label>
+                            <input type="date" class="form-control" id="appointmentDate" name="appointmentDate" required>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="hours">Hours</label>
+                                <select class="form-control" id="hours" name="hours" required>
+                                    @for (int i = 0; i < 24; i++)
+                                    {
+                                        <option value="@i">@i.ToString("00")</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label for="minutes">Minutes</label>
+                                <select class="form-control" id="minutes" name="minutes" required>
+                                    @for (int i = 0; i < 60; i++)
+                                    {
+                                        <option value="@i">@i.ToString("00")</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success" onclick="showDetailForm()">Create Appointment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Popup -->
+<div class="modal fade" id="appointmentDetailModal" tabindex="-1" aria-labelledby="appointmentDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="appointmentDetailModalLabel">Appointment Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="appointmentDetailForm" asp-action="CreateAppointment" asp-controller="Home" method="post">
+                    <!-- Hidden fields for form submission -->
+                    <input type="hidden" id="startDate" name="appointmentDate">
+
+                    <div class="form-group mb-3">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="location">Location</label>
+                        <input type="text" class="form-control" id="location" name="location" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label>Start Time</label>
+                        <div class="row">
+                            <div class="col-4">
+                                <input type="text" class="form-control" id="displayStartDate" readonly>
+                            </div>
+                            <div class="col">
+                                <select class="form-control" id="startHours" name="hours" required>
+                                    @for (int i = 0; i < 24; i++)
+                                    {
+                                        <option value="@i">@i.ToString("00")</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col">
+                                <select class="form-control" id="startMinutes" name="minutes" required>
+                                    @for (int i = 0; i < 60; i++)
+                                    {
+                                        <option value="@i">@i.ToString("00")</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label>End Time</label>
+                        <div class="row">
+                            <div class="col-4">
+                                <input type="text" class="form-control" id="displayEndDate" readonly>
+                            </div>
+                            <div class="col">
+                                <select class="form-control" id="endHours" name="endHours" required>
+                                    <option value="" selected disabled>HH</option>
+                                    @for (int i = 0; i < 24; i++)
+                                    {
+                                        <option value="@i">@i.ToString("00")</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col">
+                                <select class="form-control" id="endMinutes" name="endMinutes" required>
+                                    <option value="" selected disabled>MM</option>
+                                    @for (int i = 0; i < 60; i++)
+                                    {
+                                        <option value="@i">@i.ToString("00")</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isReminder" name="isReminder">
+                            <label class="form-check-label" for="isReminder">
+                                Reminder
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isGroupMeeting" name="isGroupMeeting">
+                            <label class="form-check-label" for="isGroupMeeting">
+                                Group Meeting
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="submitAppointment()">Xác Nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showDetailForm() {
+            // Get values from the initial form
+            const date = document.getElementById('appointmentDate').value;
+            const hours = document.getElementById('hours').value;
+            const minutes = document.getElementById('minutes').value;
+
+            // Set start time values in the modal form
+            document.getElementById('startDate').value = date;
+            document.getElementById('displayStartDate').value = date;
+            document.getElementById('startHours').value = hours;
+            document.getElementById('startMinutes').value = minutes;
+
+            // Set end date (same as start date)
+            document.getElementById('displayEndDate').value = date;
+
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('appointmentDetailModal'));
+            modal.show();
+        }
+
+        function submitAppointment() {
+            document.getElementById('appointmentDetailForm').submit();
+        }
+    </script>
+}
