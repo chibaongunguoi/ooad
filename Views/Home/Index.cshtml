@@ -64,6 +64,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-danger" id="validationErrors" style="display: none;">
+                </div>
                 <form id="appointmentDetailForm" asp-action="CreateAppointment" asp-controller="Home" method="post">
                     <!-- Hidden fields for form submission -->
                     <input type="hidden" id="startDate" name="appointmentDate">
@@ -151,7 +153,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="submitAppointment()">Xác Nhận</button>
+                <button type="button" class="btn btn-primary" onclick="validateAndSubmit()">Xác Nhận</button>
             </div>
         </div>
     </div>
@@ -179,7 +181,56 @@
             modal.show();
         }
 
-        function submitAppointment() {
+        function validateAndSubmit() {
+            const errorDiv = document.getElementById('validationErrors');
+            const errors = [];
+
+            // Check required fields
+            const title = document.getElementById('title').value.trim();
+            const location = document.getElementById('location').value.trim();
+            const endHours = document.getElementById('endHours').value;
+            const endMinutes = document.getElementById('endMinutes').value;
+
+            if (!title) {
+                errors.push("Tiêu đề không được để trống");
+            }
+
+            if (!location) {
+                errors.push("Địa điểm không được để trống");
+            }
+
+            if (!endHours || !endMinutes) {
+                errors.push("Vui lòng chọn thời gian kết thúc");
+            }
+
+            // Check if end time is after start time
+            if (endHours && endMinutes) {
+                const startDate = document.getElementById('startDate').value;
+                const startHours = parseInt(document.getElementById('startHours').value);
+                const startMinutes = parseInt(document.getElementById('startMinutes').value);
+                const endHoursInt = parseInt(endHours);
+                const endMinutesInt = parseInt(endMinutes);
+
+                const startTime = new Date(startDate);
+                startTime.setHours(startHours, startMinutes);
+
+                const endTime = new Date(startDate);
+                endTime.setHours(endHoursInt, endMinutesInt);
+
+                if (endTime <= startTime) {
+                    errors.push("Thời gian kết thúc phải sau thời gian bắt đầu");
+                }
+            }
+
+            // Display errors or submit form
+            if (errors.length > 0) {
+                errorDiv.innerHTML = errors.map(error => `<div>${error}</div>`).join('');
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // If no errors, hide error div and submit
+            errorDiv.style.display = 'none';
             document.getElementById('appointmentDetailForm').submit();
         }
     </script>
