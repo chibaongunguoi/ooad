@@ -231,3 +231,4 @@ C:\diskD\bao storage\ooad\obj\Debug\net9.0\refint\ooad.dll
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.pdb
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.genruntimeconfig.cache
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\ref\ooad.dll
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.sourcelink.json

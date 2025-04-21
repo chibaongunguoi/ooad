@@ -5,6 +5,9 @@ using ooad.Models;
 public class MainContext : DbContext
 {
     public required DbSet<Appointment> Appointment { get; set; } = null!;
+    public required DbSet<Reminder> Reminder { get; set; } = null!;
+    public required DbSet<GroupMeeting> GroupMeeting { get; set; } = null!;
+     public required DbSet<GroupMeeting_User> GroupMeeting_User { get; set; } = null!;
     public required DbSet<User> User { get; set; } = null!;
 
     public MainContext() { }

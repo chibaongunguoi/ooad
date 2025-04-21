@@ -1,4 +1,4 @@
-    public class Appointment
+    public class GroupMeeting
     {
         public int Id { get; set; }
         public int UserId { get; set; }
