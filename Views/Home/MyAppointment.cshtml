@@ -1,0 +1,115 @@
+@model AppointmentListViewModel
+@{
+    ViewData["Title"] = "My Appointments";
+}
+
+<div class="container">
+    <h1 class="mb-4">@ViewData["Title"]</h1>
+
+    <div class="row">
+        <!-- Regular Appointments -->
+        <div class="col-md-12 mb-4">
+            <h2>Appointments</h2>
+            @if (!Model.Appointments.Any())
+            {
+                <p>No appointments found.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Location</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var appointment in Model.Appointments)
+                            {
+                                <tr>
+                                    <td>@appointment.Title</td>
+                                    <td>@appointment.Location</td>
+                                    <td>@appointment.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@appointment.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <!-- Reminders -->
+        <div class="col-md-12 mb-4">
+            <h2>Reminders</h2>
+            @if (!Model.Reminders.Any())
+            {
+                <p>No reminders found.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Location</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var reminder in Model.Reminders)
+                            {
+                                <tr>
+                                    <td>@reminder.Title</td>
+                                    <td>@reminder.Location</td>
+                                    <td>@reminder.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@reminder.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <!-- Group Meetings -->
+        <div class="col-md-12 mb-4">
+            <h2>Group Meetings</h2>
+            @if (!Model.GroupMeetings.Any())
+            {
+                <p>No group meetings found.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Location</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var meeting in Model.GroupMeetings)
+                            {
+                                <tr>
+                                    <td>@meeting.Title</td>
+                                    <td>@meeting.Location</td>
+                                    <td>@meeting.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@meeting.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

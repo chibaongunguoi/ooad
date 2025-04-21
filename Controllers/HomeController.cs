@@ -65,6 +65,7 @@ public class HomeController : Controller
             return RedirectToAction("Login", "Account");
         }
 
+        // Handle Reminder if selected
         if (isReminder)
         {
             var reminder = new Reminder
@@ -77,7 +78,9 @@ public class HomeController : Controller
             };
             _context.Reminder.Add(reminder);
         }
-        else if (isGroupMeeting)
+
+        // Handle GroupMeeting if selected
+        if (isGroupMeeting)
         {
             var groupMeeting = new GroupMeeting
             {
@@ -88,8 +91,9 @@ public class HomeController : Controller
                 Location = location
             };
             _context.GroupMeeting.Add(groupMeeting);
-
-            await _context.SaveChangesAsync(); // Save first to get the ID
+            
+            // Save changes to get the GroupMeeting ID
+            await _context.SaveChangesAsync();
 
             var groupMeetingUser = new GroupMeeting_User
             {
@@ -98,7 +102,9 @@ public class HomeController : Controller
             };
             _context.GroupMeeting_User.Add(groupMeetingUser);
         }
-        else
+
+        // If neither checkbox is selected, create a regular appointment
+        if (!isReminder && !isGroupMeeting)
         {
             var appointment = new Appointment
             {
@@ -111,17 +117,39 @@ public class HomeController : Controller
             _context.Appointment.Add(appointment);
         }
 
+        // Save all changes at once
         await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
+        
+        // Redirect to MyAppointment instead of Index to show the new entries
+        return RedirectToAction(nameof(MyAppointment));
     }
 
-    public IActionResult Privacy()
+    public async Task<IActionResult> MyAppointment()
     {
         if (HttpContext.Session.GetString("Username") == null)
         {
             return RedirectToAction("Login", "Account");
         }
-        return View();
+
+        var username = HttpContext.Session.GetString("Username");
+        var user = await _context.User.FirstOrDefaultAsync(u => u.Username == username);
+        
+        if (user == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        var viewModel = new AppointmentListViewModel
+        {
+            Appointments = await _context.Appointment.Where(a => a.UserId == user.Id).ToListAsync(),
+            Reminders = await _context.Reminder.Where(r => r.UserId == user.Id).ToListAsync(),
+            GroupMeetings = await _context.GroupMeeting
+                .Include(g => g.GroupMeeting_Users)
+                .Where(g => g.GroupMeeting_Users.Any(gu => gu.UserId == user.Id))
+                .ToListAsync()
+        };
+
+        return View(viewModel);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
