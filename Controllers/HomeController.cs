@@ -27,6 +27,17 @@ public class HomeController : Controller
                 (startTime <= a.StartTime && endTime >= a.EndTime)));   // New appointment completely overlaps existing one
     }
 
+    private async Task<GroupMeeting> CheckForMatchingGroupMeeting(int userId, string title, DateTime startTime, DateTime endTime)
+    {
+        return await _context.GroupMeeting
+            .Include(g => g.GroupMeeting_Users)
+            .FirstOrDefaultAsync(g => 
+                g.Title.ToLower() == title.ToLower() && 
+                g.StartTime == startTime && 
+                g.EndTime == endTime &&
+                !g.GroupMeeting_Users.Any(gu => gu.UserId == userId));
+    }
+
     public IActionResult Index()
     {
         if (HttpContext.Session.GetString("Username") == null)
@@ -38,7 +49,7 @@ public class HomeController : Controller
 
     [HttpPost]
     public async Task<IActionResult> CreateAppointment(DateTime appointmentDate, int hours, int minutes, 
-        int endHours, int endMinutes, string title, string location, bool isReminder, bool isGroupMeeting, bool forceCreate = false)
+        int endHours, int endMinutes, string title, string location, bool isReminder, bool isGroupMeeting, bool forceCreate = false, bool joinGroup = false)
     {
         _logger.LogInformation($"isReminder value: {isReminder}");
         Console.WriteLine($"isReminder value: {isReminder}");
@@ -78,6 +89,32 @@ public class HomeController : Controller
             return RedirectToAction("Login", "Account");
         }
 
+        // Check for matching group meeting if not forcing creation
+        if (!forceCreate && !joinGroup)
+        {
+            var matchingGroupMeeting = await CheckForMatchingGroupMeeting(user.Id, title, startTime, endTime);
+            if (matchingGroupMeeting != null)
+            {
+                TempData["MatchingGroupMeeting"] = true;
+                TempData["MatchingGroupMeetingData"] = System.Text.Json.JsonSerializer.Serialize(new {
+                    Id = matchingGroupMeeting.Id,
+                    Title = matchingGroupMeeting.Title,
+                    Location = matchingGroupMeeting.Location,
+                    StartTime = matchingGroupMeeting.StartTime,
+                    EndTime = matchingGroupMeeting.EndTime
+                });
+                TempData["FormData"] = System.Text.Json.JsonSerializer.Serialize(new {
+                    Title = title,
+                    Location = location,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    IsReminder = isReminder,
+                    IsGroupMeeting = isGroupMeeting
+                });
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
         // Check for conflicts if not forcing creation
         if (!forceCreate)
         {
@@ -101,6 +138,22 @@ public class HomeController : Controller
                 });
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        if (joinGroup)
+        {
+            // Get the group meeting ID from TempData
+            var groupMeetingData = System.Text.Json.JsonSerializer.Deserialize<dynamic>(TempData["MatchingGroupMeetingData"].ToString());
+            var groupMeetingId = groupMeetingData.GetProperty("Id").GetInt32();
+
+            var groupMeetingUser = new GroupMeeting_User
+            {
+                UserId = user.Id,
+                GroupMeetingId = groupMeetingId
+            };
+            _context.GroupMeeting_User.Add(groupMeetingUser);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(MyAppointment));
         }
 
         // Always create an Appointment record
@@ -247,6 +300,43 @@ public class HomeController : Controller
             _logger.LogError(ex, $"Error deleting {model.Type} with ID {model.Id}");
             return BadRequest(ex.Message);
         }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetGroupMeetingParticipants(int id)
+    {
+        if (HttpContext.Session.GetString("Username") == null)
+        {
+            return Unauthorized();
+        }
+
+        var username = HttpContext.Session.GetString("Username");
+        var currentUser = await _context.User.FirstOrDefaultAsync(u => u.Username == username);
+        
+        if (currentUser == null)
+        {
+            return Unauthorized();
+        }
+
+        // Check if the current user is a participant of this meeting
+        var isParticipant = await _context.GroupMeeting_User
+            .AnyAsync(gu => gu.GroupMeetingId == id && gu.UserId == currentUser.Id);
+
+        if (!isParticipant)
+        {
+            return Unauthorized();
+        }
+
+        var participants = await _context.GroupMeeting_User
+            .Include(gu => gu.User)
+            .Where(gu => gu.GroupMeetingId == id)
+            .Select(gu => new { 
+                Username = gu.User.Username,
+                IsCreator = gu.GroupMeeting.UserId == gu.UserId
+            })
+            .ToListAsync();
+
+        return Json(participants);
     }
 
     public async Task<IActionResult> MyAppointment()

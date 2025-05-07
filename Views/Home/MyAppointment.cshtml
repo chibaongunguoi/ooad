@@ -5,6 +5,22 @@
 
 @Html.AntiForgeryToken()
 
+<!-- Participants Modal -->
+<div class="modal fade" id="participantsModal" tabindex="-1" aria-labelledby="participantsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="participantsModalLabel">Meeting Participants</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul id="participantsList" class="list-group">
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container">
     <h1 class="mb-4">@ViewData["Title"]</h1>
 
@@ -120,6 +136,9 @@
                                     <td>@meeting.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>@meeting.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>
+                                        <button class="btn btn-info btn-sm me-1" onclick="viewParticipants(@meeting.Id)">
+                                            <i class="bi bi-people"></i> View Participants
+                                        </button>
                                         <button class="btn btn-danger btn-sm" onclick="deleteAppointment(@meeting.Id, 'groupmeeting')">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
@@ -158,6 +177,42 @@
                 console.error('Network error:', error);
                 alert('Network error when deleting appointment: ' + error.message);
             });
+        }
+
+        function viewParticipants(meetingId) {
+            fetch(`/Home/GetGroupMeetingParticipants?id=${meetingId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(participants => {
+                    const list = document.getElementById('participantsList');
+                    list.innerHTML = '';
+                    
+                    participants.forEach(participant => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.innerHTML = participant.username;
+                        
+                        if (participant.isCreator) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-primary rounded-pill';
+                            badge.innerHTML = 'Creator';
+                            li.appendChild(badge);
+                        }
+                        
+                        list.appendChild(li);
+                    });
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('participantsModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading participants');
+                });
         }
     </script>
 }
