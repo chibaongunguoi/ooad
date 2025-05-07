@@ -109,7 +109,7 @@
                         <label>End Time</label>
                         <div class="row">
                             <div class="col-4">
-                                <input type="text" class="form-control" id="displayEndDate" readonly>
+                                <input type="date" class="form-control" id="displayEndDate" name="endDate" required>
                             </div>
                             <div class="col">
                                 <select class="form-control" id="endHours" name="endHours" required>
@@ -159,13 +159,59 @@
     </div>
 </div>
 
+<!-- Conflict Warning Modal -->
+<div class="modal fade" id="conflictModal" tabindex="-1" aria-labelledby="conflictModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="conflictModalLabel">Time Conflict Detected</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <p>There is already an appointment scheduled during this time:</p>
+                    <div id="conflictDetails"></div>
+                </div>
+                <p>Would you like to choose a different time or replace the existing appointment?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Choose Different Time</button>
+                <button type="button" class="btn btn-danger" onclick="replaceAppointment()">Replace Existing</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure Bootstrap is loaded
+            if (typeof bootstrap === 'undefined') {
+                console.error('Bootstrap is not loaded');
+            }
+        });
+
         function showDetailForm() {
-            // Get values from the initial form
+            console.log("showDetailForm called");
+            
+            // Get and validate form values
             const date = document.getElementById('appointmentDate').value;
             const hours = document.getElementById('hours').value;
             const minutes = document.getElementById('minutes').value;
+
+            if (!date) {
+                alert("Vui lòng chọn ngày");
+                return;
+            }
+
+            console.log("Values:", { date, hours, minutes });
+
+            // Get modal element
+            const modalElement = document.getElementById('appointmentDetailModal');
+            if (!modalElement) {
+                console.error("Modal element not found");
+                return;
+            }
 
             // Set start time values in the modal form
             document.getElementById('startDate').value = date;
@@ -173,12 +219,18 @@
             document.getElementById('startHours').value = hours;
             document.getElementById('startMinutes').value = minutes;
 
-            // Set end date (same as start date)
+            // Set end date default value to start date
             document.getElementById('displayEndDate').value = date;
 
-            // Show the modal
-            const modal = new bootstrap.Modal(document.getElementById('appointmentDetailModal'));
-            modal.show();
+            try {
+                // Show the modal
+                console.log("Showing modal");
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                console.log("Modal should be visible now");
+            } catch (error) {
+                console.error("Error showing modal:", error);
+            }
         }
 
         function validateAndSubmit() {
@@ -188,6 +240,7 @@
             // Check required fields
             const title = document.getElementById('title').value.trim();
             const location = document.getElementById('location').value.trim();
+            const endDate = document.getElementById('displayEndDate').value;
             const endHours = document.getElementById('endHours').value;
             const endMinutes = document.getElementById('endMinutes').value;
 
@@ -199,12 +252,16 @@
                 errors.push("Địa điểm không được để trống");
             }
 
+            if (!endDate) {
+                errors.push("Vui lòng chọn ngày kết thúc");
+            }
+
             if (!endHours || !endMinutes) {
                 errors.push("Vui lòng chọn thời gian kết thúc");
             }
 
             // Check if end time is after start time
-            if (endHours && endMinutes) {
+            if (endDate && endHours && endMinutes) {
                 const startDate = document.getElementById('startDate').value;
                 const startHours = parseInt(document.getElementById('startHours').value);
                 const startMinutes = parseInt(document.getElementById('startMinutes').value);
@@ -214,7 +271,7 @@
                 const startTime = new Date(startDate);
                 startTime.setHours(startHours, startMinutes);
 
-                const endTime = new Date(startDate);
+                const endTime = new Date(endDate);
                 endTime.setHours(endHoursInt, endMinutesInt);
 
                 if (endTime <= startTime) {
@@ -229,9 +286,87 @@
                 return;
             }
 
-            // If no errors, hide error div and submit
-            errorDiv.style.display = 'none';
-            document.getElementById('appointmentDetailForm').submit();
+            // Create a FormData object to ensure all form fields are included
+            const form = document.getElementById('appointmentDetailForm');
+            const formData = new FormData(form);
+
+            // Explicitly set checkbox values
+            formData.set('isReminder', document.getElementById('isReminder').checked);
+            formData.set('isGroupMeeting', document.getElementById('isGroupMeeting').checked);
+
+            // Convert FormData to URLSearchParams for proper form submission
+            const params = new URLSearchParams(formData);
+
+            // Create and submit a temporary form
+            const tempForm = document.createElement('form');
+            tempForm.method = 'POST';
+            tempForm.action = form.action;
+            tempForm.style.display = 'none';
+
+            for (const [key, value] of params) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                tempForm.appendChild(input);
+            }
+
+            document.body.appendChild(tempForm);
+            tempForm.submit();
         }
+
+        function replaceAppointment() {
+            // Add forceCreate parameter to force the appointment creation
+            const form = document.getElementById('appointmentDetailForm');
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'forceCreate';
+            input.value = 'true';
+            form.appendChild(input);
+            
+            // Submit the form
+            validateAndSubmit();
+        }
+
+        // Check for conflict data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            @if (TempData["Conflict"] != null)
+            {
+                <text>
+                const conflictingAppointment = @Html.Raw(TempData["ConflictingAppointment"]);
+                const formData = @Html.Raw(TempData["FormData"]);
+                
+                // Populate the form with the previous data
+                document.getElementById('title').value = formData.Title;
+                document.getElementById('location').value = formData.Location;
+                document.getElementById('startDate').value = new Date(formData.StartTime).toISOString().split('T')[0];
+                document.getElementById('displayStartDate').value = new Date(formData.StartTime).toISOString().split('T')[0];
+                document.getElementById('startHours').value = new Date(formData.StartTime).getHours();
+                document.getElementById('startMinutes').value = new Date(formData.StartTime).getMinutes();
+                document.getElementById('displayEndDate').value = new Date(formData.EndTime).toISOString().split('T')[0];
+                document.getElementById('endHours').value = new Date(formData.EndTime).getHours();
+                document.getElementById('endMinutes').value = new Date(formData.EndTime).getMinutes();
+                document.getElementById('isReminder').checked = formData.IsReminder;
+                document.getElementById('isGroupMeeting').checked = formData.IsGroupMeeting;
+
+                // Show conflict details
+                const conflictDetails = document.getElementById('conflictDetails');
+                conflictDetails.innerHTML = `
+                    <strong>Title:</strong> ${conflictingAppointment.Title}<br>
+                    <strong>Location:</strong> ${conflictingAppointment.Location}<br>
+                    <strong>Start:</strong> ${new Date(conflictingAppointment.StartTime).toLocaleString()}<br>
+                    <strong>End:</strong> ${new Date(conflictingAppointment.EndTime).toLocaleString()}
+                `;
+
+                // Show the conflict modal
+                const modal = new bootstrap.Modal(document.getElementById('conflictModal'));
+                modal.show();
+
+                // Show the appointment form if it was hidden
+                const appointmentForm = document.getElementById('appointmentForm');
+                appointmentForm.classList.add('show');
+                </text>
+            }
+        });
     </script>
 }

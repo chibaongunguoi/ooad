@@ -17,6 +17,16 @@ public class HomeController : Controller
         _context = context;
     }
 
+    private async Task<Appointment> CheckForConflict(int userId, DateTime startTime, DateTime endTime)
+    {
+        return await _context.Appointment
+            .FirstOrDefaultAsync(a => 
+                a.UserId == userId && 
+                ((startTime >= a.StartTime && startTime < a.EndTime) ||  // New appointment starts during existing one
+                (endTime > a.StartTime && endTime <= a.EndTime) ||      // New appointment ends during existing one
+                (startTime <= a.StartTime && endTime >= a.EndTime)));   // New appointment completely overlaps existing one
+    }
+
     public IActionResult Index()
     {
         if (HttpContext.Session.GetString("Username") == null)
@@ -28,8 +38,11 @@ public class HomeController : Controller
 
     [HttpPost]
     public async Task<IActionResult> CreateAppointment(DateTime appointmentDate, int hours, int minutes, 
-        int endHours, int endMinutes, string title, string location, bool isReminder, bool isGroupMeeting)
+        int endHours, int endMinutes, string title, string location, bool isReminder, bool isGroupMeeting, bool forceCreate = false)
     {
+        _logger.LogInformation($"isReminder value: {isReminder}");
+        Console.WriteLine($"isReminder value: {isReminder}");
+
         if (HttpContext.Session.GetString("Username") == null)
         {
             return RedirectToAction("Login", "Account");
@@ -64,6 +77,42 @@ public class HomeController : Controller
         {
             return RedirectToAction("Login", "Account");
         }
+
+        // Check for conflicts if not forcing creation
+        if (!forceCreate)
+        {
+            var conflict = await CheckForConflict(user.Id, startTime, endTime);
+            if (conflict != null)
+            {
+                TempData["Conflict"] = true;
+                TempData["ConflictingAppointment"] = System.Text.Json.JsonSerializer.Serialize(new {
+                    Title = conflict.Title,
+                    StartTime = conflict.StartTime,
+                    EndTime = conflict.EndTime,
+                    Location = conflict.Location
+                });
+                TempData["FormData"] = System.Text.Json.JsonSerializer.Serialize(new {
+                    Title = title,
+                    Location = location,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    IsReminder = isReminder,
+                    IsGroupMeeting = isGroupMeeting
+                });
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        // Always create an Appointment record
+        var appointment = new Appointment
+        {
+            UserId = user.Id,
+            Title = title,
+            StartTime = startTime,
+            EndTime = endTime,
+            Location = location
+        };
+        _context.Appointment.Add(appointment);
 
         // Handle Reminder if selected
         if (isReminder)
@@ -103,25 +152,101 @@ public class HomeController : Controller
             _context.GroupMeeting_User.Add(groupMeetingUser);
         }
 
-        // If neither checkbox is selected, create a regular appointment
-        if (!isReminder && !isGroupMeeting)
-        {
-            var appointment = new Appointment
-            {
-                UserId = user.Id,
-                Title = title,
-                StartTime = startTime,
-                EndTime = endTime,
-                Location = location
-            };
-            _context.Appointment.Add(appointment);
-        }
-
-        // Save all changes at once
+        // Save all changes
         await _context.SaveChangesAsync();
         
-        // Redirect to MyAppointment instead of Index to show the new entries
+        // Redirect to MyAppointment to show the new entries
         return RedirectToAction(nameof(MyAppointment));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAppointment([FromBody] DeleteAppointmentModel model)
+    {
+        try
+        {
+            _logger.LogInformation($"Attempting to delete {model.Type} with ID {model.Id}");
+            
+            if (HttpContext.Session.GetString("Username") == null)
+            {
+                _logger.LogWarning("Unauthorized: No username in session");
+                return Unauthorized();
+            }
+
+            var username = HttpContext.Session.GetString("Username");
+            var user = await _context.User.FirstOrDefaultAsync(u => u.Username == username);
+            
+            if (user == null)
+            {
+                _logger.LogWarning($"User not found: {username}");
+                return Unauthorized();
+            }
+
+            _logger.LogInformation($"User {username} attempting to delete {model.Type}");
+
+            switch (model.Type.ToLower())
+            {
+                case "appointment":
+                    var appointment = await _context.Appointment
+                        .FirstOrDefaultAsync(a => a.Id == model.Id && a.UserId == user.Id);
+                    if (appointment != null)
+                    {
+                        _logger.LogInformation($"Deleting appointment {appointment.Id}: {appointment.Title}");
+                        _context.Appointment.Remove(appointment);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Appointment {model.Id} not found or doesn't belong to user {user.Id}");
+                        return NotFound();
+                    }
+                    break;
+
+                case "reminder":
+                    var reminder = await _context.Reminder
+                        .FirstOrDefaultAsync(r => r.Id == model.Id && r.UserId == user.Id);
+                    if (reminder != null)
+                    {
+                        _logger.LogInformation($"Deleting reminder {reminder.Id}: {reminder.Title}");
+                        _context.Reminder.Remove(reminder);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Reminder {model.Id} not found or doesn't belong to user {user.Id}");
+                        return NotFound();
+                    }
+                    break;
+
+                case "groupmeeting":
+                    var groupMeeting = await _context.GroupMeeting
+                        .Include(g => g.GroupMeeting_Users)
+                        .FirstOrDefaultAsync(g => g.Id == model.Id && g.UserId == user.Id);
+                    if (groupMeeting != null)
+                    {
+                        _logger.LogInformation($"Deleting group meeting {groupMeeting.Id}: {groupMeeting.Title}");
+                        _context.GroupMeeting_User.RemoveRange(groupMeeting.GroupMeeting_Users);
+                        _context.GroupMeeting.Remove(groupMeeting);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Group meeting {model.Id} not found or doesn't belong to user {user.Id}");
+                        return NotFound();
+                    }
+                    break;
+
+                default:
+                    _logger.LogWarning($"Invalid type specified: {model.Type}");
+                    return BadRequest($"Invalid type: {model.Type}");
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation($"Successfully deleted {model.Type} with ID {model.Id}");
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error deleting {model.Type} with ID {model.Id}");
+            return BadRequest(ex.Message);
+        }
     }
 
     public async Task<IActionResult> MyAppointment()

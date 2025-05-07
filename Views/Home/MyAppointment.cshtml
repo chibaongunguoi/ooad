@@ -3,6 +3,8 @@
     ViewData["Title"] = "My Appointments";
 }
 
+@Html.AntiForgeryToken()
+
 <div class="container">
     <h1 class="mb-4">@ViewData["Title"]</h1>
 
@@ -24,6 +26,7 @@
                                 <th>Location</th>
                                 <th>Start Time</th>
                                 <th>End Time</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -34,6 +37,11 @@
                                     <td>@appointment.Location</td>
                                     <td>@appointment.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>@appointment.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteAppointment(@appointment.Id, 'appointment')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -59,6 +67,7 @@
                                 <th>Location</th>
                                 <th>Start Time</th>
                                 <th>End Time</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -69,6 +78,11 @@
                                     <td>@reminder.Location</td>
                                     <td>@reminder.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>@reminder.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteAppointment(@reminder.Id, 'reminder')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -94,6 +108,7 @@
                                 <th>Location</th>
                                 <th>Start Time</th>
                                 <th>End Time</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -104,6 +119,11 @@
                                     <td>@meeting.Location</td>
                                     <td>@meeting.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>@meeting.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteAppointment(@meeting.Id, 'groupmeeting')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -113,3 +133,31 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function deleteAppointment(id, type) {
+            fetch('/Home/DeleteAppointment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify({ id: id, type: type })
+            })
+            .then(async response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Server error:', errorText);
+                    alert('Error deleting appointment: ' + errorText);
+                }
+            })
+            .catch(error => {
+                console.error('Network error:', error);
+                alert('Network error when deleting appointment: ' + error.message);
+            });
+        }
+    </script>
+}
