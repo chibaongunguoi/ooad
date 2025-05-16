@@ -131,7 +131,10 @@
                             @foreach (var meeting in Model.GroupMeetings)
                             {
                                 <tr>
-                                    <td>@meeting.Title</td>
+                                    <td>
+                                        @meeting.Title
+                                        <span class="badge bg-info">@meeting.GroupMeeting_Users.Count() participants</span>
+                                    </td>
                                     <td>@meeting.Location</td>
                                     <td>@meeting.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>@meeting.EndTime.ToString("dd/MM/yyyy HH:mm")</td>

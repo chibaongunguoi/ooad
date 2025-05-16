@@ -6,6 +6,15 @@ using ooad.Models;
 
 namespace ooad.Controllers;
 
+public class GroupMeetingTempData
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Location { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+}
+
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
@@ -142,17 +151,67 @@ public class HomeController : Controller
 
         if (joinGroup)
         {
-            // Get the group meeting ID from TempData
-            var groupMeetingData = System.Text.Json.JsonSerializer.Deserialize<dynamic>(TempData["MatchingGroupMeetingData"].ToString());
-            var groupMeetingId = groupMeetingData.GetProperty("Id").GetInt32();
+            var matchingGroupMeetingJson = TempData["MatchingGroupMeetingData"]?.ToString();
+            if (string.IsNullOrEmpty(matchingGroupMeetingJson))
+            {
+                _logger.LogError("TempData for matching group meeting was not found");
+                ModelState.AddModelError("", "Unable to join group meeting. Please try again.");
+                return View("Index");
+            }
+
+            GroupMeetingTempData groupMeetingData;
+            try
+            {
+                groupMeetingData = System.Text.Json.JsonSerializer.Deserialize<GroupMeetingTempData>(matchingGroupMeetingJson);
+                if (groupMeetingData == null)
+                {
+                    throw new InvalidOperationException("Failed to deserialize group meeting data");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to deserialize group meeting data");
+                ModelState.AddModelError("", "Unable to join group meeting. Please try again.");
+                return View("Index");
+            }
+
+            // Verify that the group meeting still exists
+            var groupMeeting = await _context.GroupMeeting
+                .Include(g => g.GroupMeeting_Users)
+                .FirstOrDefaultAsync(g => g.Id == groupMeetingData.Id);
+
+            if (groupMeeting == null)
+            {
+                _logger.LogWarning($"Group meeting with ID {groupMeetingData.Id} no longer exists");
+                ModelState.AddModelError("", "The group meeting no longer exists.");
+                return View("Index");
+            }
+
+            // Check if user is already a member
+            if (groupMeeting.GroupMeeting_Users.Any(gu => gu.UserId == user.Id))
+            {
+                _logger.LogWarning($"User {user.Id} is already a member of group meeting {groupMeetingData.Id}");
+                ModelState.AddModelError("", "You are already a member of this group meeting.");
+                return View("Index");
+            }
 
             var groupMeetingUser = new GroupMeeting_User
             {
                 UserId = user.Id,
-                GroupMeetingId = groupMeetingId
+                GroupMeetingId = groupMeetingData.Id
             };
             _context.GroupMeeting_User.Add(groupMeetingUser);
-            await _context.SaveChangesAsync();
+            try 
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation($"User {user.Id} successfully joined group meeting {groupMeetingData.Id}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to add user {user.Id} to group meeting {groupMeetingData.Id}");
+                ModelState.AddModelError("", "Failed to join group meeting. Please try again.");
+                return View("Index");
+            }
             return RedirectToAction(nameof(MyAppointment));
         }
 
@@ -210,6 +269,39 @@ public class HomeController : Controller
         
         // Redirect to MyAppointment to show the new entries
         return RedirectToAction(nameof(MyAppointment));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> JoinGroupMeeting(int groupMeetingId)
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+        if (userId == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        // Check if user already joined this meeting
+        var existingJoin = await _context.GroupMeeting_User
+            .FirstOrDefaultAsync(gmu => gmu.UserId == userId && gmu.GroupMeetingId == groupMeetingId);
+            
+        if (existingJoin != null)
+        {
+            TempData["Message"] = "You have already joined this meeting.";
+            return RedirectToAction("Index");
+        }
+
+        // Create new GroupMeeting_User record
+        var groupMeetingUser = new GroupMeeting_User
+        {
+            UserId = userId.Value,
+            GroupMeetingId = groupMeetingId
+        };
+
+        _context.GroupMeeting_User.Add(groupMeetingUser);
+        await _context.SaveChangesAsync();
+
+        TempData["Message"] = "Successfully joined the group meeting!";
+        return RedirectToAction("Index");
     }
 
     [HttpPost]
@@ -318,24 +410,36 @@ public class HomeController : Controller
             return Unauthorized();
         }
 
-        // Check if the current user is a participant of this meeting
-        var isParticipant = await _context.GroupMeeting_User
-            .AnyAsync(gu => gu.GroupMeetingId == id && gu.UserId == currentUser.Id);
+        // Get the group meeting with all related data
+        var groupMeeting = await _context.GroupMeeting
+            .Include(g => g.GroupMeeting_Users)
+                .ThenInclude(gu => gu.User)
+            .FirstOrDefaultAsync(g => g.Id == id);
+
+        if (groupMeeting == null)
+        {
+            return NotFound("Group meeting not found");
+        }
+
+        // Check if the current user is a participant
+        var isParticipant = groupMeeting.GroupMeeting_Users
+            .Any(gu => gu.UserId == currentUser.Id);
 
         if (!isParticipant)
         {
             return Unauthorized();
         }
 
-        var participants = await _context.GroupMeeting_User
-            .Include(gu => gu.User)
-            .Where(gu => gu.GroupMeetingId == id)
+        var participants = groupMeeting.GroupMeeting_Users
             .Select(gu => new { 
                 Username = gu.User.Username,
-                IsCreator = gu.GroupMeeting.UserId == gu.UserId
+                IsCreator = groupMeeting.UserId == gu.UserId
             })
-            .ToListAsync();
+            .OrderBy(p => !p.IsCreator) // Creator first, then other participants
+            .ToList();
 
+        _logger.LogInformation($"Retrieved {participants.Count} participants for meeting {id}");
+        
         return Json(participants);
     }
 
@@ -360,6 +464,7 @@ public class HomeController : Controller
             Reminders = await _context.Reminder.Where(r => r.UserId == user.Id).ToListAsync(),
             GroupMeetings = await _context.GroupMeeting
                 .Include(g => g.GroupMeeting_Users)
+                    .ThenInclude(gu => gu.User)  // Thêm dòng này để load thông tin user
                 .Where(g => g.GroupMeeting_Users.Any(gu => gu.UserId == user.Id))
                 .ToListAsync()
         };

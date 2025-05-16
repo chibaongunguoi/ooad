@@ -1,3 +1,12 @@
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.csproj.AssemblyReference.cache
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.GeneratedMSBuildEditorConfig.editorconfig
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.AssemblyInfoInputs.cache
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.AssemblyInfo.cs
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.csproj.CoreCompileInputs.cache
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.MvcApplicationPartsAssemblyInfo.cache
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.RazorAssemblyInfo.cache
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.RazorAssemblyInfo.cs
+C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.sourcelink.json
 C:\diskD\bao storage\ooad\bin\Debug\net9.0\appsettings.Development.json
 C:\diskD\bao storage\ooad\bin\Debug\net9.0\appsettings.json
 C:\diskD\bao storage\ooad\bin\Debug\net9.0\ooad.staticwebassets.runtime.json
@@ -141,14 +150,6 @@ C:\diskD\bao storage\ooad\bin\Debug\net9.0\runtimes\win\lib\net9.0\Microsoft.Dat
 C:\diskD\bao storage\ooad\bin\Debug\net9.0\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
 C:\diskD\bao storage\ooad\bin\Debug\net9.0\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
 C:\diskD\bao storage\ooad\bin\Debug\net9.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.csproj.AssemblyReference.cache
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.GeneratedMSBuildEditorConfig.editorconfig
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.AssemblyInfoInputs.cache
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.AssemblyInfo.cs
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.csproj.CoreCompileInputs.cache
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.MvcApplicationPartsAssemblyInfo.cache
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.RazorAssemblyInfo.cache
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.RazorAssemblyInfo.cs
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\scopedcss\Views\Shared\_Layout.cshtml.rz.scp.css
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\scopedcss\bundle\ooad.styles.css
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\scopedcss\projectbundle\ooad.bundle.scp.css
@@ -231,4 +232,3 @@ C:\diskD\bao storage\ooad\obj\Debug\net9.0\refint\ooad.dll
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.pdb
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.genruntimeconfig.cache
 C:\diskD\bao storage\ooad\obj\Debug\net9.0\ref\ooad.dll
-C:\diskD\bao storage\ooad\obj\Debug\net9.0\ooad.sourcelink.json
